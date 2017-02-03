@@ -1,23 +1,15 @@
 package in.goodiebag.memorywidget;
 
-import android.app.AlarmManager;
-import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
 import android.content.Context;
-import android.content.Intent;
-import android.graphics.Path;
-import android.net.Uri;
 import android.os.Environment;
 import android.os.StatFs;
-import android.util.Log;
+import android.support.v4.content.ContextCompat;
 import android.widget.RemoteViews;
 
 import java.io.File;
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Map;
-import java.util.Random;
+import java.text.DecimalFormat;
 
 import static android.provider.Telephony.ThreadsColumns.ERROR;
 
@@ -25,11 +17,10 @@ import static android.provider.Telephony.ThreadsColumns.ERROR;
  * Implementation of App Widget functionality.
  */
 public class MemoryWidget extends AppWidgetProvider {
-
+    static  File dirs[];
     static void updateAppWidget(Context context, AppWidgetManager appWidgetManager,
                                 int appWidgetId) {
-
-        CharSequence widgetText = "Internal : " +getAvailableInternalMemorySize() + "/" + getTotalInternalMemorySize() + " \n" + " External : " + getAvailableExternalMemorySize() + "/" + getTotalExternalMemorySize();
+        CharSequence widgetText = "Internal  " +getOccupiedInternalMemorySize() + "/" + getTotalInternalMemorySize() + " \n" + " External : " + getAvailableExternalMemorySize(context) + "/" + getTotalExternalMemorySize();
         // Construct the RemoteViews object
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.memory_widget);
         views.setTextViewText(R.id.appwidget_text, widgetText);
@@ -41,6 +32,7 @@ public class MemoryWidget extends AppWidgetProvider {
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
         // There may be multiple widgets active, so update all of them
+        dirs = ContextCompat.getExternalFilesDirs(context, null);
         for (int appWidgetId : appWidgetIds) {
             updateAppWidget(context, appWidgetManager, appWidgetId);
         }
@@ -56,27 +48,38 @@ public class MemoryWidget extends AppWidgetProvider {
         // Enter relevant functionality for when the last widget is disabled
     }
 
+    public static String getOccupiedInternalMemorySize() {
+        File path = Environment.getDataDirectory();
+        StatFs stat = new StatFs(dirs[0].getPath());
+        long blockSize = stat.getBlockSizeLong();
+        long availableBlocks = stat.getAvailableBlocksLong();
+        long totalBlocks = stat.getBlockCountLong();
+        return readableFileSize((totalBlocks*blockSize) - (availableBlocks * blockSize));
+    }
+
 
     public static String getAvailableInternalMemorySize() {
         File path = Environment.getDataDirectory();
-        StatFs stat = new StatFs(path.getPath());
-        long blockSize = stat.getBlockSize();
-        long availableBlocks = stat.getAvailableBlocks();
-        return formatSize(availableBlocks * blockSize);
+        StatFs stat = new StatFs(dirs[0].getPath());
+        long blockSize = stat.getBlockSizeLong();
+        long availableBlocks = stat.getAvailableBlocksLong();
+        return readableFileSize(availableBlocks * blockSize);
     }
 
     public static String getTotalInternalMemorySize() {
         File path = Environment.getDataDirectory();
-        StatFs stat = new StatFs(path.getPath());
-        long blockSize = stat.getBlockSize();
-        long totalBlocks = stat.getBlockCount();
-        return formatSize(totalBlocks * blockSize);
+        StatFs stat = new StatFs(dirs[0].getPath());
+        long blockSize = stat.getBlockSizeLong();
+        long totalBlocks = stat.getBlockCountLong();
+        return readableFileSize(totalBlocks * blockSize);
     }
 
-    public static String getAvailableExternalMemorySize() {
+    public static String getAvailableExternalMemorySize(Context c) {
         if (externalMemoryAvailable()) {
-            //TODO :: Find a method to find external storage space
-            return null;
+            StatFs stat = new StatFs(dirs[1].getPath());
+            long blockSize = stat.getBlockSizeLong();
+            long availableBlocks = stat.getAvailableBlocksLong();
+            return readableFileSize(availableBlocks * blockSize);
         } else {
             return ERROR;
         }
@@ -85,7 +88,10 @@ public class MemoryWidget extends AppWidgetProvider {
     public static String getTotalExternalMemorySize() {
         if (externalMemoryAvailable()) {
             //TODO :: Find a method to find external storage space
-            return null;
+            StatFs stat = new StatFs(dirs[1].getPath());
+            long blockSize = stat.getBlockSizeLong();
+            long totalBlocks = stat.getBlockCountLong();
+            return readableFileSize(totalBlocks * blockSize);
         } else {
             return ERROR;
         }
@@ -96,6 +102,15 @@ public class MemoryWidget extends AppWidgetProvider {
                 android.os.Environment.MEDIA_MOUNTED);
     }
 
+
+
+    public static String readableFileSize(long size) {
+        if(size <= 0) return "0";
+        final String[] units = new String[] { "B", "kB", "MB", "GB", "TB" };
+        int digitGroups = (int) (Math.log10(size)/Math.log10(1024));
+        return new DecimalFormat("#,##0.#").format(size/Math.pow(1024, digitGroups)) + " " + units[digitGroups];
+    }
+
     public static String formatSize(long size) {
         String suffix = null;
 
@@ -104,7 +119,7 @@ public class MemoryWidget extends AppWidgetProvider {
             size /= 1024;
             if (size >= 1024) {
                 suffix = "MB";
-                size /= 1024;
+                size /= (1024);
             }
         }
         StringBuilder resultBuffer = new StringBuilder(Long.toString(size));
