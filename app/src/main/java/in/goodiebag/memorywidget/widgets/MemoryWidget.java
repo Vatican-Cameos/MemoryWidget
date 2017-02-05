@@ -1,23 +1,31 @@
-package in.goodiebag.memorywidget;
+package in.goodiebag.memorywidget.widgets;
 
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
 import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Environment;
 import android.os.StatFs;
 import android.support.v4.content.ContextCompat;
+import android.util.Log;
 import android.widget.RemoteViews;
 
 import java.io.File;
 import java.text.DecimalFormat;
 
-import static android.provider.Telephony.ThreadsColumns.ERROR;
+import in.goodiebag.memorywidget.R;
+import in.goodiebag.memorywidget.services.UpdateWidgetsService;
+
+import static android.content.Context.MODE_PRIVATE;
 
 /**
  * Implementation of App Widget functionality.
  */
 public class MemoryWidget extends AppWidgetProvider {
     static  File dirs[];
+
+
     static void updateAppWidget(Context context, AppWidgetManager appWidgetManager,
                                 int appWidgetId) {
         CharSequence widgetText = "Internal  " +getOccupiedInternalMemorySize() + "/" + getTotalInternalMemorySize() + " \n" + " External : " + getAvailableExternalMemorySize(context) + "/" + getTotalExternalMemorySize();
@@ -27,6 +35,7 @@ public class MemoryWidget extends AppWidgetProvider {
 
         // Instruct the widget manager to update the widget
         appWidgetManager.updateAppWidget(appWidgetId, views);
+
     }
 
     @Override
@@ -36,6 +45,9 @@ public class MemoryWidget extends AppWidgetProvider {
         for (int appWidgetId : appWidgetIds) {
             updateAppWidget(context, appWidgetManager, appWidgetId);
         }
+        Log.d("MemoryWidget","onUpdate");
+        Intent intentService = new Intent(context , UpdateWidgetsService.class);
+        context.startService(intentService);
     }
 
     @Override
@@ -75,25 +87,25 @@ public class MemoryWidget extends AppWidgetProvider {
     }
 
     public static String getAvailableExternalMemorySize(Context c) {
-        if (externalMemoryAvailable()) {
+        if (dirs.length > 1) {
             StatFs stat = new StatFs(dirs[1].getPath());
             long blockSize = stat.getBlockSizeLong();
             long availableBlocks = stat.getAvailableBlocksLong();
             return readableFileSize(availableBlocks * blockSize);
         } else {
-            return ERROR;
+            return "NA";
         }
     }
 
     public static String getTotalExternalMemorySize() {
-        if (externalMemoryAvailable()) {
+        if (dirs.length > 1) {
             //TODO :: Find a method to find external storage space
             StatFs stat = new StatFs(dirs[1].getPath());
             long blockSize = stat.getBlockSizeLong();
             long totalBlocks = stat.getBlockCountLong();
             return readableFileSize(totalBlocks * blockSize);
         } else {
-            return ERROR;
+            return "NA";
         }
     }
 
@@ -108,7 +120,7 @@ public class MemoryWidget extends AppWidgetProvider {
         if(size <= 0) return "0";
         final String[] units = new String[] { "B", "kB", "MB", "GB", "TB" };
         int digitGroups = (int) (Math.log10(size)/Math.log10(1024));
-        return new DecimalFormat("#,##0.#").format(size/Math.pow(1024, digitGroups)) + " " + units[digitGroups];
+        return new DecimalFormat("#,##0.##").format(size/Math.pow(1024, digitGroups)) + " " + units[digitGroups];
     }
 
     public static String formatSize(long size) {
