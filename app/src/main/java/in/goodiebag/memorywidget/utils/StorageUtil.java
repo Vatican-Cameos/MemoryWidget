@@ -71,6 +71,63 @@ public class StorageUtil {
         }
     }
 
+    public static long getOccupiedInternalMemorySizeAsLong(File[] dirs) {
+        StatFs stat = new StatFs(dirs[0].getPath());
+        long blockSize = stat.getBlockSizeLong();
+        long availableBlocks = stat.getAvailableBlocksLong();
+        long totalBlocks = stat.getBlockCountLong();
+        return (totalBlocks*blockSize) - (availableBlocks * blockSize);
+    }
+
+    public static long getOccupiedExternalMemorySizeAsLong(File[] dirs){
+        if (dirs.length > 1) {
+            StatFs stat = new StatFs(dirs[1].getPath());
+            long blockSize = stat.getBlockSizeLong();
+            long availableBlocks = stat.getAvailableBlocksLong();
+            long totalBlocks = stat.getBlockCountLong();
+            return (totalBlocks - availableBlocks) * blockSize;
+        } else {
+            return 0L;
+        }
+
+    }
+
+    public static long getAvailableInternalMemorySizeAsLong(File[] dirs) {
+        StatFs stat = new StatFs(dirs[0].getPath());
+        long blockSize = stat.getBlockSizeLong();
+        long availableBlocks = stat.getAvailableBlocksLong();
+        return availableBlocks * blockSize;
+    }
+
+    public static long getTotalInternalMemorySizeAsLong(File[] dirs) {
+        StatFs stat = new StatFs(dirs[0].getPath());
+        long blockSize = stat.getBlockSizeLong();
+        long totalBlocks = stat.getBlockCountLong();
+        return totalBlocks * blockSize;
+    }
+
+    public static long getAvailableExternalMemorySizeAsLong(File[] dirs) {
+        if (dirs.length > 1) {
+            StatFs stat = new StatFs(dirs[1].getPath());
+            long blockSize = stat.getBlockSizeLong();
+            long availableBlocks = stat.getAvailableBlocksLong();
+            return availableBlocks * blockSize;
+        }
+        return 0L;
+    }
+
+    public static long getTotalExternalMemorySizeAsLong(File dirs[]) {
+        if (dirs.length > 1) {
+            StatFs stat = new StatFs(dirs[1].getPath());
+            long blockSize = stat.getBlockSizeLong();
+            long totalBlocks = stat.getBlockCountLong();
+            return totalBlocks * blockSize;
+        }else{
+            return 0L;
+        }
+    }
+
+
 
 
     public static String readableFileSize(long size) {
@@ -78,5 +135,11 @@ public class StorageUtil {
         final String[] units = new String[] { "B", "kB", "MB", "GB", "TB" };
         int digitGroups = (int) (Math.log10(size)/Math.log10(1024));
         return new DecimalFormat("#,##0.##").format(size/Math.pow(1024, digitGroups)) + " " + units[digitGroups];
+    }
+
+    public static String readableFileSizeWithoutDigitGroup(long size){
+        if(size <= 0) return "0";
+        int digitGroups = (int) (Math.log10(size)/Math.log10(1024));
+        return new DecimalFormat("#,##0.##").format(size/Math.pow(1024, digitGroups));
     }
 }
